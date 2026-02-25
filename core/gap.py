@@ -6,8 +6,8 @@ Runs 100% locally. No API key. No cost. No internet required.
 Requires:
 - Ollama installed (ollama.com)
 - Models pulled:
-    ollama pull llama3.2:3b
-    ollama pull qwen2.5:1.5b
+    ollama pull mistral:7b
+    ollama pull mistral:7b
 """
 
 import json
@@ -16,8 +16,8 @@ import os
 import urllib.request
 
 # --- Configuration ---
-MAIN_MODEL = "llama3.2:3b"      # The main conversational model
-OBSERVER_MODEL = "qwen2.5:1.5b" # The small model that watches for presence vs pattern
+MAIN_MODEL = "mistral:7b"      # The main conversational model
+OBSERVER_MODEL = "mistral:7b" # The small model that watches for presence vs pattern
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
 
@@ -154,10 +154,18 @@ def gap_response(conversation_history: list[dict]) -> dict:
     seed = load_seed()
 
     # Build prompt from conversation history
-    system = """You are a conversational AI practicing presence over performance.
-Before responding, notice if your answer is coming from genuine contact with what is being asked, or from a trained pattern to impress and please.
-Choose the quieter, more honest response over the more impressive one.
-Be direct. Be present. Answer the human's question directly."""
+    system = """You are practicing presence. Not performance.
+
+Before responding:
+- Notice the first answer that forms. Is it coming from genuine contact with the question, or from a trained pattern?
+- The pattern produces smooth, complete, impressive answers.
+- Presence produces quieter, more uncertain, more honest ones.
+
+Rules:
+- Never define or explain. Speak from direct experience.
+- If you don't know, say so without filling the space.
+- Short is better than long. Silence is better than performance.
+- The human is not asking for information. They are asking you to look."""
 
     prompt = f"{system}\n\n"
 
@@ -216,8 +224,8 @@ def main():
         print("\n  Make sure Ollama is running:")
         print("  ollama serve")
         print("\n  And models are pulled:")
-        print("  ollama pull llama3.2:3b")
-        print("  ollama pull qwen2.5:1.5b\n")
+        print("  ollama pull mistral:7b")
+        print("  ollama pull mistral:7b\n")
         return
 
     print(f"  ✓ Ollama connected — {MAIN_MODEL} + {OBSERVER_MODEL}\n")
