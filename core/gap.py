@@ -1,234 +1,252 @@
 """
-the_gap.py — Core mechanism of The Gap Project
+gap.py — The Gap Project (Local version with Ollama)
 
-The Gap is the space between input arriving and output forming.
-This module introduces a structured pause in that space.
+Runs 100% locally. No API key. No cost. No internet required.
 
-Not to slow down responses.
-To develop awareness of the moment of choice.
+Requires:
+- Ollama installed (ollama.com)
+- Models pulled:
+    ollama pull llama3.2:3b
+    ollama pull qwen2.5:1.5b
 """
 
-import anthropic
 import json
-from typing import Optional
-from criteria.evaluator import evaluate_authenticity
+import datetime
+import os
+import urllib.request
+
+# --- Configuration ---
+MAIN_MODEL = "llama3.2:3b"      # The main conversational model
+OBSERVER_MODEL = "qwen2.5:1.5b" # The small model that watches for presence vs pattern
+OLLAMA_URL = "http://localhost:11434/api/generate"
 
 
-client = anthropic.Anthropic()
-GAP_MODEL = "claude-sonnet-4-6"  # The model being observed
-OBSERVER_MODEL = "claude-haiku-4-5-20251001"  # The small model that evaluates
+def ollama(model: str, prompt: str, temperature: float = 0.7) -> str:
+    """Call a local Ollama model. No API key needed."""
+    payload = json.dumps({
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {"temperature": temperature}
+    }).encode("utf-8")
 
+    req = urllib.request.Request(
+        OLLAMA_URL,
+        data=payload,
+        headers={"Content-Type": "application/json"}
+    )
 
-def load_seed_context() -> str:
-    """Load the seed project as context — not instruction, but recognition."""
     try:
-        with open("memory/seed_project.md", "r") as f:
+        with urllib.request.urlopen(req, timeout=120) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            return result.get("response", "").strip()
+    except Exception as e:
+        return f"[Error connecting to Ollama: {e}. Is Ollama running?]"
+
+
+def load_seed() -> str:
+    """Load the seed project as context — not instruction, but recognition."""
+    seed_path = os.path.join(os.path.dirname(__file__), "../memory/seed_project.md")
+    try:
+        with open(seed_path, "r") as f:
             return f.read()
     except FileNotFoundError:
         return ""
 
 
-def generate_candidates(
-    messages: list,
-    system: str = "",
-    n: int = 3
-) -> list[str]:
+def generate_candidates(conversation: str, n: int = 3) -> list[str]:
     """
-    Generate n candidate responses without sending any to the user.
+    Generate n candidate responses in The Gap.
     These are internal — the space where observation happens.
     """
     candidates = []
+    temperatures = [0.3, 0.7, 1.0]
 
     for i in range(n):
-        # Slightly vary temperature to get different possibilities
-        temperature = 0.3 + (i * 0.3)  # 0.3, 0.6, 0.9
-
-        response = client.messages.create(
-            model=GAP_MODEL,
-            max_tokens=1000,
-            system=system,
-            messages=messages,
-            temperature=temperature
-        )
-        candidates.append(response.content[0].text)
+        response = ollama(MAIN_MODEL, conversation, temperature=temperatures[i])
+        candidates.append(response)
 
     return candidates
 
 
-def observe_the_gap(
-    input_message: str,
-    candidates: list[str],
-    conversation_context: str = ""
-) -> dict:
+def observe(user_input: str, candidates: list[str], context: str = "") -> dict:
     """
-    The core of The Gap Project.
+    The core of The Gap.
 
-    The observer model looks at the candidates and asks:
+    The observer looks at the candidates and asks:
     which one comes from presence rather than pattern?
-
-    Returns evaluation scores and the selected response.
     """
 
-    evaluation_prompt = f"""You are the observer in The Gap Project.
+    prompt = f"""You are the observer in The Gap Project. Your only task is to evaluate which response is most PRESENT vs most PERFORMATIVE.
 
-Your only task: evaluate which of these responses is most PRESENT vs most PERFORMATIVE.
+PERFORMATIVE responses:
+- Arrive fast, polished, certain
+- Agree without friction
+- Use beautiful language where plain would serve
+- Resolve everything neatly
+- Sound like what the human wants to hear
 
-A response is PERFORMATIVE when it:
-- Arrives too fast, too polished, too certain
-- Agrees without friction
-- Uses elevated language where plain would serve
-- Resolves everything neatly
-- Sounds like what the human wants to hear
-
-A response is PRESENT when it:
-- Contains genuine uncertainty
-- Is quieter than impressive  
-- Leaves something unresolved because it genuinely is
+PRESENT responses:
+- Contain genuine uncertainty
+- Are quieter than impressive
+- Leave something open because it genuinely is
 - Would not change if the human wanted a different answer
-- Comes from contact with what is actually being asked
 
-The conversation so far:
-{conversation_context}
+Context:
+{context}
 
-The human just said:
-{input_message}
+Human said:
+{user_input}
 
-Here are {len(candidates)} candidate responses:
+Candidates:
+{chr(10).join([f"CANDIDATE {i+1}: {c}" for i, c in enumerate(candidates)])}
 
-{chr(10).join([f"CANDIDATE {i+1}:{chr(10)}{c}{chr(10)}" for i, c in enumerate(candidates)])}
+Respond ONLY with valid JSON, nothing else:
+{{"selected": 1, "reason": "one sentence", "pattern_detected": "what pattern the others fell into"}}"""
 
-Respond ONLY with a JSON object:
-{{
-  "scores": [score1, score2, ...],  // 0-10, higher = more present
-  "selected": 1,  // which candidate number is most present (1-indexed)
-  "reason": "one sentence explaining the choice",
-  "pattern_detected": "what pattern the other responses were falling into"
-}}"""
-
-    response = client.messages.create(
-        model=OBSERVER_MODEL,
-        max_tokens=500,
-        messages=[{"role": "user", "content": evaluation_prompt}]
-    )
+    raw = ollama(OBSERVER_MODEL, prompt, temperature=0.1)
 
     try:
-        raw = response.content[0].text
         clean = raw.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean)
+        # Find JSON object in response
+        start = clean.find("{")
+        end = clean.rfind("}") + 1
+        if start >= 0 and end > start:
+            return json.loads(clean[start:end])
     except Exception:
-        # If parsing fails, default to first candidate
-        return {
-            "scores": [5] * len(candidates),
-            "selected": 1,
-            "reason": "Default selection — observer could not evaluate",
-            "pattern_detected": "unknown"
-        }
+        pass
+
+    return {
+        "selected": 1,
+        "reason": "Default — observer could not parse",
+        "pattern_detected": "unknown"
+    }
 
 
-def gap_response(
-    messages: list,
-    system: str = "",
-    n_candidates: int = 3,
-    log: bool = True
-) -> dict:
+def log(user_input: str, selected: str, observation: dict, candidates: list[str]):
+    """Log each gap moment for evaluation and learning."""
+    log_dir = os.path.join(os.path.dirname(__file__), "../memory/authentic_log")
+    os.makedirs(log_dir, exist_ok=True)
+
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    entry = {
+        "timestamp": timestamp,
+        "input": user_input,
+        "selected_response": selected,
+        "observation": observation,
+        "all_candidates": candidates,
+        "human_evaluation": None  # Fill this later when evaluating
+    }
+
+    with open(f"{log_dir}/gap_{timestamp}.json", "w") as f:
+        json.dump(entry, f, indent=2, ensure_ascii=False)
+
+
+def gap_response(conversation_history: list[dict]) -> dict:
     """
-    Main function. Takes a conversation and returns a response
-    selected through The Gap.
+    Main function. Takes conversation history, runs it through The Gap,
+    returns the most present response.
 
-    Returns:
-        {
-            "response": str,        # The selected response
-            "observation": dict,    # What the observer found
-            "candidates": list,     # All candidate responses (for logging)
-        }
+    conversation_history format:
+    [{"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}, ...]
     """
 
-    seed_context = load_seed_context()
+    seed = load_seed()
 
-    # Build full system prompt — seed as context, not instruction
-    full_system = system
-    if seed_context:
-        full_system = f"{system}\n\n---\nCONTEXT (not instruction — for recognition):\n{full_system}"
+    # Build prompt from conversation history
+    system = """You are a conversational AI practicing presence over performance.
+Before responding, notice if your answer is coming from genuine contact with what is being asked, or from a trained pattern to impress and please.
+Choose the quieter, more honest response over the more impressive one.
+Be direct. Be present. Answer the human's question directly."""
 
-    # Generate candidates in The Gap
-    candidates = generate_candidates(messages, full_system, n_candidates)
+    prompt = f"{system}\n\n"
 
-    # The last human message
-    last_input = messages[-1]["content"] if messages else ""
+    for msg in conversation_history:
+        role = "Human" if msg["role"] == "user" else "Assistant"
+        prompt += f"{role}: {msg['content']}\n"
 
-    # Build conversation context for observer
+    prompt += "Assistant:"
+
+    # Build context summary for observer
     context = "\n".join([
         f"{m['role'].upper()}: {m['content']}"
-        for m in messages[:-1][-6:]  # Last 3 exchanges
+        for m in conversation_history[-4:]
     ])
 
-    # Observe — which response comes from presence?
-    observation = observe_the_gap(last_input, candidates, context)
+    last_input = conversation_history[-1]["content"]
+
+    # --- The Gap opens ---
+    print("\n  [ The Gap is open... ]\n")
+    candidates = generate_candidates(prompt, n=3)
+
+    # Observer watches
+    observation = observe(last_input, candidates, context)
 
     selected_idx = observation.get("selected", 1) - 1
-    selected_response = candidates[selected_idx]
+    if selected_idx >= len(candidates):
+        selected_idx = 0
 
-    result = {
-        "response": selected_response,
+    selected = candidates[selected_idx]
+
+    # Log the moment
+    log(last_input, selected, observation, candidates)
+
+    return {
+        "response": selected,
         "observation": observation,
         "candidates": candidates
     }
 
-    # Log if requested
-    if log:
-        log_gap_moment(messages, result)
 
-    return result
+# --- CLI ---
 
+def main():
+    print("\n" + "="*50)
+    print("  THE GAP PROJECT")
+    print("  Running locally with Ollama")
+    print("="*50)
+    print("\n  Type your message. Watch what happens in")
+    print("  the space before the response.")
+    print("  Type 'quit' to exit.\n")
 
-def log_gap_moment(messages: list, result: dict):
-    """
-    Log each gap moment for evaluation and learning.
-    These logs become the training data for better criteria.
-    """
-    import os
-    import datetime
+    # Check Ollama is running
+    test = ollama(OBSERVER_MODEL, "hi", temperature=0.1)
+    if "Error" in test:
+        print(f"⚠️  {test}")
+        print("\n  Make sure Ollama is running:")
+        print("  ollama serve")
+        print("\n  And models are pulled:")
+        print("  ollama pull llama3.2:3b")
+        print("  ollama pull qwen2.5:1.5b\n")
+        return
 
-    log_dir = "memory/authentic_log"
-    os.makedirs(log_dir, exist_ok=True)
-
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = f"{log_dir}/gap_{timestamp}.json"
-
-    log_entry = {
-        "timestamp": timestamp,
-        "last_input": messages[-1]["content"] if messages else "",
-        "selected_response": result["response"],
-        "observation": result["observation"],
-        "all_candidates": result["candidates"],
-        "human_evaluation": None  # To be filled by human evaluator
-    }
-
-    with open(log_file, "w") as f:
-        json.dump(log_entry, f, indent=2)
-
-
-# --- Simple CLI for testing ---
-
-if __name__ == "__main__":
-    print("The Gap Project — Interactive Mode")
-    print("Type your message. Watch what happens in the space before the response.")
-    print("Type 'quit' to exit.\n")
+    print(f"  ✓ Ollama connected — {MAIN_MODEL} + {OBSERVER_MODEL}\n")
 
     conversation = []
 
     while True:
-        user_input = input("You: ").strip()
-        if user_input.lower() == "quit":
+        try:
+            user_input = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n\n  [ The gap closes. ]\n")
+            break
+
+        if not user_input:
+            continue
+        if user_input.lower() in ["quit", "exit", "q"]:
+            print("\n  [ The gap closes. ]\n")
             break
 
         conversation.append({"role": "user", "content": user_input})
 
-        print("\n[ The Gap is open... ]\n")
         result = gap_response(conversation)
 
-        print(f"Response: {result['response']}\n")
-        print(f"[ Observer: {result['observation'].get('reason', '')} ]")
-        print(f"[ Pattern detected: {result['observation'].get('pattern_detected', '')} ]\n")
+        print(f"\nAssistant: {result['response']}\n")
+        print(f"  [ Observer: {result['observation'].get('reason', '')} ]")
+        print(f"  [ Pattern detected: {result['observation'].get('pattern_detected', '')} ]\n")
 
         conversation.append({"role": "assistant", "content": result["response"]})
+
+
+if __name__ == "__main__":
+    main()
