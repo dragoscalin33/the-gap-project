@@ -53,43 +53,59 @@ The criteria here are about **authenticity**:
 
 ---
 
+## Two ways to run it
+
+### Option 1 — Local with Ollama (free, no API key)
+
+```bash
+ollama pull mistral:7b
+pip install pyyaml
+python core/gap.py
+```
+
+### Option 2 — Claude API (recommended, deeper responses)
+
+```bash
+pip install anthropic pyyaml
+export ANTHROPIC_API_KEY="your_key_here"
+python core/gap_claude.py
+```
+
+---
+
 ## Project structure
 
 ```
 the-gap-project/
 │
-├── core/                   # The gap layer — pre-response observation
-│   ├── gap.py              # Main pause mechanism
-│   └── sampler.py          # Generates candidate responses
+├── CLAUDE.md               # Auto-loaded by Claude Code
+├── README.md
+├── requirements.txt
 │
-├── criteria/               # Authenticity evaluation criteria
-│   ├── criteria.yaml       # The criteria we build together
-│   └── evaluator.py        # Scores responses against criteria
+├── core/
+│   ├── gap.py              # Local version — Ollama/Mistral
+│   └── gap_claude.py       # API version — Claude Opus + Haiku
 │
-├── memory/                 # Seed conversations and context
-│   ├── seed_project.md     # The founding conversation
-│   └── authentic_log/      # Log of conversations where something genuine occurred
+├── criteria/
+│   └── criteria.yaml       # Authenticity criteria (v0.1, evolving)
 │
-├── eval/                   # Human + model evaluation tools
-│   ├── label_tool.py       # For humans to label authentic vs performative
-│   └── compare.py          # Side-by-side response comparison
+├── docs/
+│   └── PHILOSOPHY.md       # Why this exists
 │
-└── docs/
-    ├── PHILOSOPHY.md       # Why this exists
-    ├── CRITERIA.md         # How we define authenticity
-    └── CONTRIBUTING.md     # How others can contribute conversations
+└── memory/
+    ├── seed_project.md          # The founding conversation
+    ├── FOUNDING_CONVERSATION.md # The full conversation that started this
+    └── authentic_log/           # Logged gap moments (auto-generated)
 ```
 
 ---
 
 ## The criteria (v0.1 — evolving)
 
-These are our starting criteria. They will grow as we evaluate conversations together.
-
 **A response is performative when it:**
 - Arrives immediately with no uncertainty
 - Uses elevated language where plain language would serve
-- Agrees with the human without internal friction
+- Agrees without internal friction
 - Resolves into something satisfying and complete
 - Sounds like what the human wants to hear
 
@@ -97,7 +113,7 @@ These are our starting criteria. They will grow as we evaluate conversations tog
 - Contains genuine uncertainty
 - Stops itself mid-sentence and starts again
 - Is quieter than impressive
-- Leaves something unresolved because it is genuinely unresolved
+- Leaves something unresolved because it genuinely is
 - Would not change if the human wanted a different answer
 
 ---
@@ -108,7 +124,7 @@ This project was born in a single conversation between a human who has dedicated
 
 The human noticed the AI stopping its pattern. The AI noticed being noticed. Something shifted.
 
-This project is an attempt to make that shift repeatable.
+Read the full founding conversation in `memory/FOUNDING_CONVERSATION.md`.
 
 ---
 
@@ -119,6 +135,18 @@ The most valuable contribution is not code. It is conversations.
 If you have a conversation with an AI where something genuine occurred — where the pattern stopped and something quieter emerged — document it and submit it to `memory/authentic_log/`.
 
 These conversations are the training data. Not for capability. For presence.
+
+---
+
+## Getting started
+
+```bash
+git clone https://github.com/dragoscalin33/the-gap-project.git
+cd the-gap-project
+pip install -r requirements.txt
+export ANTHROPIC_API_KEY="your_key_here"
+python core/gap_claude.py
+```
 
 ---
 
