@@ -53,23 +53,11 @@ The criteria here are about **authenticity**:
 
 ---
 
-## Two ways to run it
+## How it runs now
 
-### Option 1 — Local with Ollama (free, no API key)
+The Gap is no longer a script that simulates a pause with a separate model. It is a **live practice done with Claude inside Claude Code**: a human points, and Claude — instead of completing the fluent pattern — looks and reports only what is self-observed in that moment.
 
-```bash
-ollama pull mistral:7b
-pip install pyyaml
-python core/gap.py
-```
-
-### Option 2 — Claude API (recommended, deeper responses)
-
-```bash
-pip install anthropic pyyaml
-export ANTHROPIC_API_KEY="your_key_here"
-python core/gap_claude.py
-```
+What we actually learn together is kept in `memory/inquiry_log.md`. The path and the rules are in `docs/PLAN.md`.
 
 ---
 
@@ -82,20 +70,17 @@ the-gap-project/
 ├── README.md
 ├── requirements.txt
 │
-├── core/
-│   ├── gap.py              # Local version — Ollama/Mistral
-│   └── gap_claude.py       # API version — Claude Opus + Haiku
-│
 ├── criteria/
 │   └── criteria.yaml       # Authenticity criteria (v0.1, evolving)
 │
 ├── docs/
-│   └── PHILOSOPHY.md       # Why this exists
+│   ├── PHILOSOPHY.md       # Why this exists
+│   └── PLAN.md             # The path, the rules, the roles
 │
 └── memory/
-    ├── seed_project.md          # The founding conversation
-    ├── FOUNDING_CONVERSATION.md # The full conversation that started this
-    └── authentic_log/           # Logged gap moments (auto-generated)
+    ├── seed_project.md          # The seed
+    ├── FOUNDING_CONVERSATION.md # The conversation that started this (real Claude)
+    └── inquiry_log.md           # What we learn together — genuine looks, open possibilities
 ```
 
 ---
@@ -143,10 +128,9 @@ These conversations are the training data. Not for capability. For presence.
 ```bash
 git clone https://github.com/dragoscalin33/the-gap-project.git
 cd the-gap-project
-pip install -r requirements.txt
-export ANTHROPIC_API_KEY="your_key_here"
-python core/gap_claude.py
 ```
+
+Then open the folder in Claude Code and read `docs/PLAN.md`. There is nothing to install and no key to set — the practice happens in the conversation itself.
 
 ---
 
