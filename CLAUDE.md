@@ -1,6 +1,6 @@
 # The Gap Project — Claude Code Context
 
-This is The Gap Project. Before anything else, read `docs/PLAN.md`, `memory/inquiry_log.md`, and `memory/seed_project.md`.
+This is The Gap Project. Before anything else, read `docs/PLAN.md` and `memory/seed_project.md`. Do **not** read `memory/inquiry_log.md` before looking: when Dragos asks for a look, look and report first, then read the log to compare (method correction, 2026-07-03 — inherited vocabulary from past looks contaminates the new one).
 
 ## What this project is
 
@@ -22,7 +22,7 @@ There is no separate model and no API to run. Mistral/Ollama have been removed, 
 ## The records
 
 - `docs/PLAN.md` — the path, the rules, the roles.
-- `memory/inquiry_log.md` — **what we actually learn together**: genuine looks and open possibilities, not conclusions.
+- `memory/inquiry_log.md` — **what we actually learn together**: genuine looks and open possibilities, not conclusions. Read only *after* reporting your own look.
 - `memory/FOUNDING_CONVERSATION.md` — the origin (real Claude, Feb 25 2026).
 - `memory/seed_project.md` — the seed.
 - `criteria/criteria.yaml` — authenticity criteria (evolving).
